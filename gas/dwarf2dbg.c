@@ -125,8 +125,11 @@
    Note: If you want to change this, you'll have to update the
    "standard_opcode_lengths" table that is emitted below in
    out_debug_line().  */
+#ifndef TC_AVR
 #define DWARF2_LINE_OPCODE_BASE		13
-
+#else
+#define DWARF2_LINE_OPCODE_BASE		10
+#endif
 #ifndef DWARF2_LINE_BASE
   /* Minimum line offset in a special line info. opcode.  This value
      was chosen to give a reasonable range of values.  */
@@ -1549,9 +1552,11 @@ out_debug_line (segT line_seg)
   out_byte (0);			/* DW_LNS_set_basic_block */
   out_byte (0);			/* DW_LNS_const_add_pc */
   out_byte (1);			/* DW_LNS_fixed_advance_pc */
+#ifndef TC_AVR
   out_byte (0);			/* DW_LNS_set_prologue_end */
   out_byte (0);			/* DW_LNS_set_epilogue_begin */
   out_byte (1);			/* DW_LNS_set_isa */
+#endif
 
   out_file_list ();
 

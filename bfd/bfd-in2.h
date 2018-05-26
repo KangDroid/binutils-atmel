@@ -2154,6 +2154,7 @@ enum bfd_architecture
 #define bfd_mach_avr5          5
 #define bfd_mach_avr51         51
 #define bfd_mach_avr6          6
+#define bfd_mach_avrtiny   100
 #define bfd_mach_avrxmega1 101
 #define bfd_mach_avrxmega2 102
 #define bfd_mach_avrxmega3 103
@@ -4251,6 +4252,20 @@ in .byte hi8(symbol)  */
 /* This is a 8 bit reloc for the AVR that stores bits 16..23 of a symbol
 in .byte hlo8(symbol)  */
   BFD_RELOC_AVR_8_HLO,
+
+/* AVR relocations to mark the difference of two local symbols.
+These are only needed to support linker relaxation and can be ignored
+when not relaxing.  The field is set to the value of the difference
+assuming no relaxation.  The relocation encodes the position of the
+second symbol so the linker can determine whether to adjust the field
+value.  */
+  BFD_RELOC_AVR_DIFF8,
+  BFD_RELOC_AVR_DIFF16,
+  BFD_RELOC_AVR_DIFF32,
+
+/* This is a 7 bit reloc for the AVR that stores SRAM address for 16bit
+lds and sts instructions supported only tiny core.  */
+  BFD_RELOC_AVR_LDS_STS_16,
 
 /* Renesas RL78 Relocations.  */
   BFD_RELOC_RL78_NEG8,

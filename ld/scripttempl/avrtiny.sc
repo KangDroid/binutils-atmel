@@ -4,13 +4,15 @@ OUTPUT_ARCH(${ARCH})
 
 MEMORY
 {
-  text   (rx)   : ORIGIN = 0, LENGTH = $TEXT_LENGTH
+  text   (rx)   : ORIGIN = $TEXT_ORIGIN, LENGTH = $TEXT_LENGTH
   data   (rw!x) : ORIGIN = $DATA_ORIGIN, LENGTH = $DATA_LENGTH
-  eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = 64K
-  fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = 1K
-  lock      (rw!x) : ORIGIN = 0x830000, LENGTH = 1K
-  signature (rw!x) : ORIGIN = 0x840000, LENGTH = 1K
-  user_signatures (rw!x) : ORIGIN = 0x850000, LENGTH = 1K
+
+  /* Provide offsets for config, lock and signature to match
+     production file format. Ignore offsets in datasheet.  */
+
+  config    (rw!x) : ORIGIN = 0x820000, LENGTH = 2
+  lock      (rw!x) : ORIGIN = 0x830000, LENGTH = 2
+  signature (rw!x) : ORIGIN = 0x840000, LENGTH = 4
 }
 
 SECTIONS
@@ -24,7 +26,7 @@ SECTIONS
   .gnu.version_d ${RELOCATING-0} : { *(.gnu.version_d)	}
   .gnu.version_r ${RELOCATING-0} : { *(.gnu.version_r)	}
 
-  .rel.init    ${RELOCATING-0} : { *(.rel.init)		}
+  .rel.init    ${RELOCATING-0} : { *(.rel.init)	}
   .rela.init   ${RELOCATING-0} : { *(.rela.init)	}
   .rel.text    ${RELOCATING-0} :
     {
@@ -38,7 +40,7 @@ SECTIONS
       ${RELOCATING+*(.rela.text.*)}
       ${RELOCATING+*(.rela.gnu.linkonce.t*)}
     }
-  .rel.fini    ${RELOCATING-0} : { *(.rel.fini)		}
+  .rel.fini    ${RELOCATING-0} : { *(.rel.fini)	}
   .rela.fini   ${RELOCATING-0} : { *(.rela.fini)	}
   .rel.rodata  ${RELOCATING-0} :
     {
@@ -69,20 +71,20 @@ SECTIONS
   .rel.dtors   ${RELOCATING-0} : { *(.rel.dtors)	}
   .rela.dtors  ${RELOCATING-0} : { *(.rela.dtors)	}
   .rel.got     ${RELOCATING-0} : { *(.rel.got)		}
-  .rela.got    ${RELOCATING-0} : { *(.rela.got)		}
+  .rela.got    ${RELOCATING-0} : { *(.rela.got)	}
   .rel.bss     ${RELOCATING-0} : { *(.rel.bss)		}
-  .rela.bss    ${RELOCATING-0} : { *(.rela.bss)		}
+  .rela.bss    ${RELOCATING-0} : { *(.rela.bss)	}
   .rel.plt     ${RELOCATING-0} : { *(.rel.plt)		}
-  .rela.plt    ${RELOCATING-0} : { *(.rela.plt)		}
+  .rela.plt    ${RELOCATING-0} : { *(.rela.plt)	}
 
   /* Internal text space or external memory.  */
-  .text ${RELOCATING-0} :
+  .text ${RELOCATING-0} : ${RELOCATING+ AT (0x0)}
   {
     *(.vectors)
     KEEP(*(.vectors))
 
     /* For data that needs to reside in the lower 64k of progmem.  */
-    ${RELOCATING+ *(.progmem.gcc*)}
+    *(.progmem.gcc*)
 
     /* PR 13812: Placing the trampolines here gives a better chance
        that they will be in range of the code that uses them.  */
@@ -90,21 +92,21 @@ SECTIONS
     ${CONSTRUCTING+ __trampolines_start = . ; }
     /* The jump trampolines for the 16-bit limited relocs will reside here.  */
     *(.trampolines)
-    ${RELOCATING+ *(.trampolines*)}
+    *(.trampolines*)
     ${CONSTRUCTING+ __trampolines_end = . ; }
 
-    ${RELOCATING+ *(.progmem*)}
+    *(.progmem*)
     
     ${RELOCATING+. = ALIGN(2);}
 
     /* For future tablejump instruction arrays for 3 byte pc devices.
        We don't relax jump/call instructions within these sections.  */
     *(.jumptables) 
-    ${RELOCATING+ *(.jumptables*)}
+    *(.jumptables*) 
 
     /* For code that needs to reside in the lower 128k progmem.  */
     *(.lowtext)
-    ${RELOCATING+ *(.lowtext*)}
+    *(.lowtext*)
 
     ${CONSTRUCTING+ __ctors_start = . ; }
     ${CONSTRUCTING+ *(.ctors) }
@@ -139,7 +141,7 @@ SECTIONS
     KEEP (*(.init9))
     *(.text)
     ${RELOCATING+. = ALIGN(2);}
-    ${RELOCATING+ *(.text.*)}
+    *(.text.*)
     ${RELOCATING+. = ALIGN(2);}
     *(.fini9)  /* _exit() starts here.  */
     KEEP (*(.fini9))
@@ -168,9 +170,10 @@ SECTIONS
   {
     ${RELOCATING+ PROVIDE (__data_start = .) ; }
     *(.data)
-    ${RELOCATING+ *(.data*)}
+    KEEP (*(.data))
+    *(.data*)
     *(.rodata)  /* We need to include .rodata here if gcc is used */
-    ${RELOCATING+ *(.rodata*)} /* with -fdata-sections.  */
+    *(.rodata*) /* with -fdata-sections.  */
     *(.gnu.linkonce.d*)
     ${RELOCATING+. = ALIGN(2);}
     ${RELOCATING+ _edata = . ; }
@@ -181,7 +184,7 @@ SECTIONS
   {
     ${RELOCATING+ PROVIDE (__bss_start = .) ; }
     *(.bss)
-    ${RELOCATING+ *(.bss*)}
+    *(.bss*)
     *(COMMON)
     ${RELOCATING+ PROVIDE (__bss_end = .) ; }
   } ${RELOCATING+ > data}
@@ -199,21 +202,6 @@ SECTIONS
     ${RELOCATING+ PROVIDE (__heap_start = .) ; }
   } ${RELOCATING+ > data}
 
-  .eeprom ${RELOCATING-0}:
-  {
-    /* See .data above...  */
-    KEEP(*(.eeprom*))
-    ${RELOCATING+ __eeprom_end = . ; }
-  } ${RELOCATING+ > eeprom}
-
-  .fuse ${RELOCATING-0}:
-  {
-    KEEP(*(.fuse))
-    KEEP(*(.lfuse))
-    KEEP(*(.hfuse))
-    KEEP(*(.efuse))
-  } ${RELOCATING+ > fuse}
-
   .lock ${RELOCATING-0}:
   {
     KEEP(*(.lock*))
@@ -224,10 +212,10 @@ SECTIONS
     KEEP(*(.signature*))
   } ${RELOCATING+ > signature}
 
-  .user_signatures ${RELOCATING-0}:
+  .config ${RELOCATING-0}:
   {
-    KEEP(*(.user_signatures*))
-  } ${RELOCATING+ > user_signatures}
+    KEEP(*(.config*))
+  } ${RELOCATING+ > config}
 
   /* Stabs debugging sections.  */
   .stab 0 : { *(.stab) }
@@ -236,12 +224,32 @@ SECTIONS
   .stab.exclstr 0 : { *(.stab.exclstr) }
   .stab.index 0 : { *(.stab.index) }
   .stab.indexstr 0 : { *(.stab.indexstr) }
-  .comment 0 : { *(.comment) } 
-  .note.gnu.build-id : { *(.note.gnu.build-id) }
-EOF
+  .comment 0 : { *(.comment) }
+ 
+  /* DWARF debug sections.
+     Symbols in the DWARF debugging sections are relative to the beginning
+     of the section so we begin them at 0.  */
 
-. $srcdir/scripttempl/DWARF.sc
+  /* DWARF 1 */
+  .debug          0 : { *(.debug) }
+  .line           0 : { *(.line) }
 
-cat <<EOF
+  /* GNU DWARF 1 extensions */
+  .debug_srcinfo  0 : { *(.debug_srcinfo) }
+  .debug_sfnames  0 : { *(.debug_sfnames) }
+
+  /* DWARF 1.1 and DWARF 2 */
+  .debug_aranges  0 : { *(.debug_aranges) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
+
+  /* DWARF 2 */
+  .debug_info     0 : { *(.debug_info) *(.gnu.linkonce.wi.*) }
+  .debug_abbrev   0 : { *(.debug_abbrev) }
+  .debug_line     0 : { *(.debug_line) }
+  .debug_frame    0 : { *(.debug_frame) }
+  .debug_str      0 : { *(.debug_str) }
+  .debug_loc      0 : { *(.debug_loc) }
+  .debug_macinfo  0 : { *(.debug_macinfo) }
 }
 EOF
+

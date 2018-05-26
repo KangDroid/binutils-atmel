@@ -93,6 +93,18 @@ extern void avr_cons_fix_new (fragS *,int, int, expressionS *);
    visible symbols can be overridden.  */
 #define EXTERN_FORCE_RELOC 0
 
+/* If defined, this macro allows control over whether fixups for a
+   given section will be processed when the linkrelax variable is
+   set. Define it to zero and handle things in md_apply_fix instead.*/
+#define TC_LINKRELAX_FIXUP(SEG) 0
+
+/* If this macro returns non-zero, it guarantees that a relocation will be emitted
+   even when the value can be resolved locally. Do that if linkrelax is turned on */
+#define TC_FORCE_RELOCATION(fix)	avr_force_relocation (fix)
+#define TC_FORCE_RELOCATION_SUB_SAME(fix, seg) \
+  (! SEG_NORMAL (seg) || avr_force_relocation (fix))
+extern int avr_force_relocation (struct fix *);
+
 /* Values passed to md_apply_fix don't include the symbol value.  */
 #define MD_APPLY_SYM_VALUE(FIX) 0
 
@@ -149,6 +161,12 @@ extern long md_pcrel_from_section (struct fix *, segT);
       symbol_mark_used_in_reloc (FIXP->fx_addsy);	     \
       goto SKIP;					     \
     }
+
+/* This macro is evaluated for any fixup with a fx_subsy that
+   fixup_segment cannot reduce to a number.  If the macro returns
+   false an error will be reported. */
+#define TC_VALIDATE_FIX_SUB(fix, seg)   avr_validate_fix_sub (fix)                                                                    
+extern int avr_validate_fix_sub (struct fix *);
 
 /* This target is buggy, and sets fix size too large.  */
 #define TC_FX_SIZE_SLACK(FIX) 2
